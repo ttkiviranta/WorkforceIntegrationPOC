@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WorkforceIntegrationPOC.Domain/WorkforceIntegrationPOC.Domain.csproj" />
+    <Project Path="src/WorkforceIntegrationPOC.Infrastructure/WorkforceIntegrationPOC.Infrastructure.csproj" />
+    <Project Path="src/WorkforceIntegrationPOC.Web/WorkforceIntegrationPOC.Web.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,156 @@
+﻿@page "/"
+@using System.Net.Http.Json
+@using WorkforceIntegrationPOC.Domain.Entities
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Workforce Integration Demo</PageTitle>
+
+<h1>Workforce scheduling dashboard</h1>
+<p class="lead">This generic scheduling demo simulates external workforce data import and AI-assisted staffing analysis.</p>
+
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-primary" @onclick="ImportDataAsync">Import sample data</button>
+    <button class="btn btn-success" @onclick="RunAnalysisAsync">Run AI analysis</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+    <div class="alert alert-info">@statusMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(analysisSummary))
+{
+    <div class="alert alert-success">
+        <strong>AI summary:</strong>
+        <div class="mt-2">@analysisSummary</div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <h2>Employees</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Skills</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var employee in employees)
+                {
+                    <tr>
+                        <td>@employee.Name</td>
+                        <td>@employee.Skills</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-4">
+        <h2>Shifts</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Location</th>
+                    <th>Skill</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var shift in shifts)
+                {
+                    <tr>
+                        <td>@shift.StartTime.ToString("ddd HH:mm") - @shift.EndTime.ToString("HH:mm")</td>
+                        <td>@shift.Location</td>
+                        <td>@shift.RequiredSkill</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-4">
+        <h2>Assignments</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Shift</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var assignment in assignments)
+                {
+                    <tr>
+                        <td>@(assignment.Employee?.Name ?? "Unknown")</td>
+                        <td>@(assignment.Shift?.Location ?? "Unknown")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private readonly HttpClient _httpClient = new();
+    private List<Employee> employees = new();
+    private List<Shift> shifts = new();
+    private List<Assignment> assignments = new();
+    private string statusMessage = string.Empty;
+    private string? analysisSummary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient.BaseAddress = new Uri(Navigation.BaseUri);
+        await RefreshDataAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        employees = await _httpClient.GetFromJsonAsync<List<Employee>>("/api/employees") ?? new();
+        shifts = await _httpClient.GetFromJsonAsync<List<Shift>>("/api/shifts") ?? new();
+        assignments = await _httpClient.GetFromJsonAsync<List<Assignment>>("/api/assignments") ?? new();
+    }
+
+    private async Task ImportDataAsync()
+    {
+        var response = await _httpClient.PostAsync("/api/import", null);
+        if (response.IsSuccessStatusCode)
+        {
+            var payload = await response.Content.ReadFromJsonAsync<ImportResponse>();
+            statusMessage = payload?.Message ?? "Sample data imported successfully.";
+            await RefreshDataAsync();
+        }
+        else
+        {
+            statusMessage = "Import failed.";
+        }
+    }
+
+    private async Task RunAnalysisAsync()
+    {
+        var response = await _httpClient.PostAsync("/api/analyze", null);
+        if (response.IsSuccessStatusCode)
+        {
+            var payload = await response.Content.ReadFromJsonAsync<AnalysisResponse>();
+            analysisSummary = payload?.Summary ?? "No analysis returned.";
+        }
+        else
+        {
+            analysisSummary = "Analysis could not be generated.";
+        }
+    }
+
+    private sealed class ImportResponse
+    {
+        public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed class AnalysisResponse
+    {
+        public string Summary { get; set; } = string.Empty;
+    }
+}
